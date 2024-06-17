@@ -1,0 +1,6 @@
+[package]
+name = "you_should_not_pass"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
