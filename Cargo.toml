@@ -12,3 +12,11 @@ dotenv = "0.15.0"
 #async
 tokio = { version = "1", features = ["full"] }
 
+#HTTP
+reqwest = { version = "0.12", features = ["json"] }
+
+#os-diff
+# windows = {}
+
+pam = { version = "0.7.0"}
+whoami = { version = "1.5.1" }
