@@ -4,3 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+# database
+diesel = { version = "2.2.1", features = ["sqlite", "r2d2"] }
+libsqlite3-sys = { version = "0.25.2", features = ["bundled"] }
+dotenv = "0.15.0"
+
+#async
+tokio = { version = "1", features = ["full"] }
+
