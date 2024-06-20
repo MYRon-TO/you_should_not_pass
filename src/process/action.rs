@@ -1,6 +1,7 @@
 use std::error::Error;
 use tokio::net::TcpStream;
 
+#[derive(Debug, PartialEq)]
 pub enum Action {
     CheckIdentity {
         password: String,
@@ -36,19 +37,19 @@ pub enum Action {
 /// read the request from the socket and return a task
 ///
 /// Here is the TCP format:
-/// "ACTION_ID OTHER_MESSAGE"
+/// "ACTION\tOTHER_MESSAGE"
 ///
 /// for example:
-/// "0 my_password"
+/// - `"CheckIdentity\tmy_password"`
+/// - `"AddWebsiteAccount\tmy_account\tmy_password\tmy_site_url\tmy_site_name\tmy_note"`
 ///
-/// > The ACTION_ID is the index of the Action enum in task.rs
-/// > here is the index:
-/// > - 0: CheckIdentity
-/// > - 1: Login
-/// > - 2: AddWebsiteAccount
-/// > - 3: ChangeWebsiteAccount
-/// > - 4: DeleteWebsiteAccount
-/// > - 5: CheckDeadLink
+/// ## Here is the list of action:
+/// > - CheckIdentity
+/// > - Login
+/// > - AddWebsiteAccount
+/// > - ChangeWebsiteAccount
+/// > - DeleteWebsiteAccount
+/// > - CheckDeadLink
 ///
 pub async fn read_request(stream: &TcpStream) -> Result<Action, Box<dyn Error>> {
     stream.readable().await?;
@@ -57,7 +58,7 @@ pub async fn read_request(stream: &TcpStream) -> Result<Action, Box<dyn Error>> 
         Ok(0) => Err("Failed to read from socket".into()),
         Ok(_) => {
             let request = String::from_utf8_lossy(&buffer);
-            let parts: Vec<&str> = request.split_whitespace().collect();
+            let parts: Vec<&str> = request.split('\t').collect();
             Ok(pack_action(parts)?)
         }
         Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => Err("Blocked".into()),
@@ -66,21 +67,14 @@ pub async fn read_request(stream: &TcpStream) -> Result<Action, Box<dyn Error>> 
 }
 
 fn pack_action(parts: Vec<&str>) -> Result<Action, Box<dyn Error>> {
-    let action_id = parts[0].parse::<i32>()?;
-    match action_id {
-        0 => {
+    let action = parts[0];
+    match action {
+        "CheckIdentity" => {
             let password = parts.get(1).ok_or("Password is missing")?.to_string();
             Ok(Action::CheckIdentity { password })
         }
-        1 => Ok(Action::GetInfo),
-        // 2 => {
-        //     let website_id = parts
-        //         .get(1)
-        //         .ok_or("Website id is missing")?
-        //         .parse::<i32>()?;
-        //     Ok(Action::GetWebsiteAccountPassword { website_id })
-        // }
-        2 => {
+        "Login" => Ok(Action::GetInfo),
+        "AddWebsiteAccount" => {
             let account = parts.get(1).ok_or("Account is missing")?.to_string();
             let password = parts.get(2).ok_or("Password is missing")?.to_string();
             let site_url = parts.get(3).ok_or("Site URL is missing")?.to_string();
@@ -94,7 +88,7 @@ fn pack_action(parts: Vec<&str>) -> Result<Action, Box<dyn Error>> {
                 note,
             })
         }
-        3 => {
+        "ChangeWebsiteAccount" => {
             let id = parts
                 .get(1)
                 .ok_or("Website id is missing")?
@@ -113,14 +107,85 @@ fn pack_action(parts: Vec<&str>) -> Result<Action, Box<dyn Error>> {
                 new_note,
             })
         }
-        4 => {
+        "DeleteWebsiteAccount" => {
             let website_id = parts
                 .get(1)
                 .ok_or("Website id is missing")?
                 .parse::<i32>()?;
             Ok(Action::DeleteWebsiteAccount { website_id })
         }
-        5 => Ok(Action::CheckDeadLink),
-        _ => Err("Invalid action id".into()),
+        "CheckDeadLink" => Ok(Action::CheckDeadLink),
+        _ => Err("Invalid Action".into()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_pack_action() {
+        let parts = vec!["CheckIdentity", "my_password"];
+        let action = pack_action(parts).unwrap();
+        assert_eq!(
+            action,
+            Action::CheckIdentity {
+                password: "my_password".to_string()
+            }
+        );
+
+        let parts = vec!["Login"];
+        let action = pack_action(parts).unwrap();
+        assert_eq!(action, Action::GetInfo);
+
+        let parts = vec![
+            "AddWebsiteAccount",
+            "my_account",
+            "my_password",
+            "my_site_url",
+            "my_site_name",
+            "my_note",
+        ];
+        let action = pack_action(parts).unwrap();
+        assert_eq!(
+            action,
+            Action::AddWebsiteAccount {
+                account: "my_account".to_string(),
+                password: "my_password".to_string(),
+                site_url: "my_site_url".to_string(),
+                site_name: Some("my_site_name".to_string()),
+                note: Some("my_note".to_string()),
+            }
+        );
+
+        let parts = vec![
+            "ChangeWebsiteAccount",
+            "1",
+            "my_account",
+            "my_password",
+            "my_site_name",
+            "my_site_url",
+            "my_note",
+        ];
+        let action = pack_action(parts).unwrap();
+        assert_eq!(
+            action,
+            Action::ChangeWebsiteAccount {
+                id: 1,
+                new_account: "my_account".to_string(),
+                new_password: "my_password".to_string(),
+                new_site_name: Some("my_site_name".to_string()),
+                new_site_url: "my_site_url".to_string(),
+                new_note: Some("my_note".to_string()),
+            }
+        );
+
+        let parts = vec!["DeleteWebsiteAccount", "1"];
+        let action = pack_action(parts).unwrap();
+        assert_eq!(action, Action::DeleteWebsiteAccount { website_id: 1 });
+
+        let parts = vec!["CheckDeadLink"];
+        let action = pack_action(parts).unwrap();
+        assert_eq!(action, Action::CheckDeadLink);
     }
 }

@@ -1,7 +1,7 @@
-use tokio::net::TcpListener;
-use you_should_not_pass::process::process;
-use you_should_not_pass::db::Db;
 use std::sync::Arc;
+use tokio::net::TcpListener;
+use you_should_not_pass::db::Db;
+use you_should_not_pass::process::process;
 
 #[tokio::main]
 async fn main() {
@@ -16,6 +16,10 @@ async fn main() {
 
     loop {
         let (socket, _) = listner.accept().await.expect("Failed to accept connection");
-        process(socket, db.clone()).await;
+        let db = db.clone();
+
+        tokio::spawn(async move {
+            process(socket, db).await;
+        });
     }
 }

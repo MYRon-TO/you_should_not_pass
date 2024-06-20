@@ -2,7 +2,6 @@ pub mod models;
 mod schema;
 
 use diesel::prelude::*;
-use diesel::query_dsl::methods::SelectNullableDsl;
 use diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
 use diesel::result::Error;
 
@@ -187,6 +186,10 @@ mod tests {
             Ok(Some(id)) => {
                 if (db.get_website_account_password(id).await).is_err() {
                     panic!("Failed to get website account password");
+                }
+
+                if (db.delete_website_account(id).await).is_err() {
+                    panic!("Failed to delete website account");
                 }
             }
             _ => panic!("Failed to get website id by account"),
