@@ -5,6 +5,8 @@ use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
 use diesel::result::Error;
 
+use crate::encrypt::{decrypt, encrypt};
+
 type SqlitePool = PooledConnection<ConnectionManager<SqliteConnection>>;
 
 pub struct Db {
@@ -42,20 +44,27 @@ impl Db {
     ) -> Result<(), diesel::result::Error> {
         use schema::website_account::dsl::*;
 
-        let mut conn = self.get_conn()?;
-        let new_website_account = models::WebsiteAccount {
-            id: None,
-            account: new_account,
-            password: new_password,
-            site_url: new_site_url,
-            site_name: new_site_name,
-            note: new_note,
-        };
+        match encrypt(new_password).await {
+            Ok(new_password) => {
+                let mut conn = self.get_conn()?;
+                let new_website_account = models::WebsiteAccount {
+                    id: None,
+                    account: new_account,
+                    password: new_password,
+                    site_url: new_site_url,
+                    site_name: new_site_name,
+                    note: new_note,
+                };
 
-        diesel::insert_into(website_account)
-            .values(&new_website_account)
-            .execute(&mut conn)?;
-        Ok(())
+                diesel::insert_into(website_account)
+                    .values(&new_website_account)
+                    .execute(&mut conn)?;
+                Ok(())
+            }
+            Err(_) => {
+                Err(Error::NotFound)
+            }
+        }
     }
 
     pub async fn update_website_account(
@@ -68,6 +77,12 @@ impl Db {
         new_note: Option<String>,
     ) -> Result<(), diesel::result::Error> {
         use schema::website_account::dsl::*;
+
+        let new_password = if let Ok(new_password) = encrypt(new_password).await{
+            new_password
+        } else {
+            return Err(Error::NotFound);
+        };
 
         let mut conn = self.get_conn()?;
         diesel::update(website_account.filter(id.eq(website_id)))
@@ -106,7 +121,13 @@ impl Db {
             .first::<String>(&mut conn)
             .optional()?;
 
-        Ok(result)
+        let searched_password = if let Ok(result) = decrypt(result.expect("NULL")).await{
+            result
+        } else {
+            return Err(Error::NotFound);
+        };
+
+        Ok(Some(searched_password))
     }
 
     pub async fn get_all_website_account(
@@ -115,14 +136,18 @@ impl Db {
         use schema::website_account::dsl::*;
 
         let mut conn = self.get_conn()?;
-        let result = website_account.load::<models::WebsiteAccount>(&mut conn)?;
+        let mut results = website_account.load::<models::WebsiteAccount>(&mut conn)?;
 
-        Ok(result)
+        for result in results.iter_mut() {
+            if let Ok(de_password) = decrypt(result.password.clone()).await {
+                result.password = de_password;
+            }
+        }
+
+        Ok(results)
     }
 
-    pub async fn get_all_id_and_url(
-        &self,
-    ) -> Result<Vec<(String, i32)>, diesel::result::Error> {
+    pub async fn get_all_id_and_url(&self) -> Result<Vec<(String, i32)>, diesel::result::Error> {
         use schema::website_account::dsl::*;
 
         let mut conn = self.get_conn()?;
