@@ -31,3 +31,7 @@ base64 = "0.22.1"
 [[bin]]
 name = "generate_key"
 path = "src/bin/generate_key.rs"
+
+[[bin]]
+name = "add_test_data"
+path = "src/bin/add_test_data.rs"

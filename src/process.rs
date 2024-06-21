@@ -34,9 +34,9 @@ async fn handle_action(action: Action, db: Arc<Db>) -> Result<ProOk, ProError> {
             if let Err(e) = auth::authourize(password).await {
                 return Err(ProError::IdentityError(e));
             }
-
             Ok(ProOk::Ack)
         }
+
         Action::GetInfo => {
             // GetInfo
             match db.get_all_website_account().await {
@@ -106,14 +106,19 @@ async fn handle_action(action: Action, db: Arc<Db>) -> Result<ProOk, ProError> {
     }
 }
 
+/// Ack: 0
+/// Info: 1
+/// DeadLink: 2
+/// IdentityError: 3
+/// DbError: 4
 async fn answer_request(
     socket: &TcpStream,
     result: Result<ProOk, ProError>,
 ) -> Result<(), std::io::Error> {
     let response = match result {
-        Ok(ProOk::Ack) => "Ack".to_string(),
+        Ok(ProOk::Ack) => "0".to_string(),
         Ok(ProOk::Info(list)) => {
-            let mut response: String = "Info\n".to_string();
+            let mut response: String = "1".to_string();
             for item in list {
                 let site_name: &str = if let Some(x) = &item.site_name {
                     x.as_str()
@@ -130,14 +135,14 @@ async fn answer_request(
                 let id = if let Some(x) = item.id { x } else { -1 };
 
                 response.push_str(&format!(
-                    "{}\t{}\t{}\t{}\t{}\n",
-                    id, item.account, item.site_url, site_name, note
+                    "\n{}\t{}\t{}\t{}\t{}\t{}",
+                    id, item.account, item.password, item.site_url, site_name, note
                 ));
             }
             response
         }
         Ok(ProOk::DeadLink(list)) => {
-            let mut response = "DeadLink\n".to_string();
+            let mut response = "2\n".to_string();
             for item in list {
                 response.push_str(&format!("{}\t{}\n", item.0, item.1));
             }
@@ -145,11 +150,11 @@ async fn answer_request(
         }
         Err(ProError::IdentityError(e)) => {
             eprintln!("IdentityError: {}", e);
-            "IdentityError".to_string()
+            "3".to_string()
         }
         Err(ProError::DbError(e)) => {
             eprintln!("DbError: {}", e);
-            "DbError".to_string()
+            "4".to_string()
         }
     };
 
