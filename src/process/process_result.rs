@@ -1,12 +1,12 @@
-use crate::db::models::WebsiteAccount;
+use crate::db::models::WebsiteAccountWithDeadLink;
 
 pub enum ProError {
     DbError(diesel::result::Error),
     IdentityError(pam::PamError),
 }
 
-pub enum ProOk{
+pub enum ProOk {
     Ack,
-    Info(Vec<WebsiteAccount>),
+    Info(Vec<WebsiteAccountWithDeadLink>),
     DeadLink(Vec<(i32, bool)>),
 }

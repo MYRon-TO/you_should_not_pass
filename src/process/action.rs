@@ -58,13 +58,16 @@ pub async fn read_request(stream: &TcpStream) -> Result<Action, Box<dyn Error>> 
         Ok(0) => Err("Failed to read from socket".into()),
         Ok(_) => {
             let request = String::from_utf8_lossy(&buffer);
-            let parts: Vec<&str> = request.split('\t').collect();
-            eprintln!("request: {}", request);
-            for part in &parts {
-                eprintln!("part: {}", part);
-            }
+            let mut parts: Vec<&str> = request.split('\t').collect();
 
-            Ok(pack_action(parts)?)
+            eprintln!("request: {}", request);
+            let mut result = vec![];
+            for part in &mut parts {
+                result.push(part.trim_end_matches('\0'));
+            }
+            eprintln!("result: {:?}", result);
+
+            Ok(pack_action(result)?)
         }
         Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => Err("Blocked".into()),
         Err(e) => Err(e.into()),
@@ -72,12 +75,14 @@ pub async fn read_request(stream: &TcpStream) -> Result<Action, Box<dyn Error>> 
 }
 
 fn pack_action(parts: Vec<&str>) -> Result<Action, Box<dyn Error>> {
+    let action = parts[0].trim_end_matches('\0');
+    let action = action.parse::<i32>()?;
+
     // for part in &parts {
     //     eprintln!("part in pack_action: {}", part);
     // }
     // eprintln!("parts[0]: {:?}", parts[0]);
-    let action = parts[0].trim_end_matches('\0');
-    let action = action.parse::<i32>()?;
+
     match action {
         0 => {
             let password = parts.get(1).ok_or("Password is missing")?.to_string();

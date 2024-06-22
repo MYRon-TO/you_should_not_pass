@@ -5,7 +5,7 @@ mod process_result;
 
 use crate::db::Db;
 use action::*;
-use check_dead_link::check_dead_link;
+use check_dead_link::{check_dead_link, check_dead_link_info};
 use process_result::{ProError, ProOk};
 use std::sync::Arc;
 use tokio::net::TcpStream;
@@ -39,10 +39,14 @@ async fn handle_action(action: Action, db: Arc<Db>) -> Result<ProOk, ProError> {
 
         Action::GetInfo => {
             // GetInfo
-            match db.get_all_website_account().await {
-                Ok(list) => Ok(ProOk::Info(list)),
-                Err(e) => Err(ProError::DbError(e)),
-            }
+            let list = match db.get_all_website_account().await {
+                Ok(list) => list,
+                Err(e) => return Err(ProError::DbError(e)),
+            };
+
+            let result = check_dead_link_info(list).await;
+
+            Ok(ProOk::Info(result))
         }
 
         Action::AddWebsiteAccount {
@@ -133,18 +137,24 @@ async fn answer_request(
                 };
 
                 let id = if let Some(x) = item.id { x } else { -1 };
+                let is_dead = if item.dead_link { "0" } else { "1" };
 
-                response.push_str(&format!(
-                    "\n{}\t{}\t{}\t{}\t{}\t{}",
-                    id, item.account, item.password, item.site_url, site_name, note
-                ));
+                let res = format!(
+                    "\n{}\t{}\t{}\t{}\t{}\t{}\t{}",
+                    id, item.account, item.password, item.site_url, site_name, note, is_dead
+                );
+
+                eprintln!("res: {}", res);
+
+                response.push_str(&res);
             }
             response
         }
         Ok(ProOk::DeadLink(list)) => {
-            let mut response = "2\n".to_string();
+            let mut response = "2".to_string();
             for item in list {
-                response.push_str(&format!("{}\t{}\n", item.0, item.1));
+                let is_dead = if item.1 { "0" } else { "1" };
+                response.push_str(&format!("\n{}\t{}", item.0, is_dead));
             }
             response
         }
@@ -159,7 +169,6 @@ async fn answer_request(
     };
 
     let response = response.as_bytes();
-
     // Send the response
     socket.writable().await?;
     match socket.try_write(response) {

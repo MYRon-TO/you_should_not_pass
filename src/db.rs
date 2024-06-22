@@ -61,9 +61,7 @@ impl Db {
                     .execute(&mut conn)?;
                 Ok(())
             }
-            Err(_) => {
-                Err(Error::NotFound)
-            }
+            Err(_) => Err(Error::NotFound),
         }
     }
 
@@ -78,7 +76,7 @@ impl Db {
     ) -> Result<(), diesel::result::Error> {
         use schema::website_account::dsl::*;
 
-        let new_password = if let Ok(new_password) = encrypt(new_password).await{
+        let new_password = if let Ok(new_password) = encrypt(new_password).await {
             new_password
         } else {
             return Err(Error::NotFound);
@@ -121,7 +119,7 @@ impl Db {
             .first::<String>(&mut conn)
             .optional()?;
 
-        let searched_password = if let Ok(result) = decrypt(result.expect("NULL")).await{
+        let searched_password = if let Ok(result) = decrypt(result.expect("NULL")).await {
             result
         } else {
             return Err(Error::NotFound);

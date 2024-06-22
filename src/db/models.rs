@@ -12,3 +12,13 @@ pub struct WebsiteAccount {
     pub site_name: Option<String>,
     pub note: Option<String>,
 }
+
+pub struct WebsiteAccountWithDeadLink {
+    pub id: Option<i32>,
+    pub account: String,
+    pub password: String,
+    pub site_url: String,
+    pub site_name: Option<String>,
+    pub note: Option<String>,
+    pub dead_link: bool,
+}
