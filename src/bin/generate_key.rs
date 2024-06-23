@@ -14,10 +14,12 @@ fn main() {
     let mut encoder = EncoderWriter::new(Vec::new(), &STANDARD);
     encoder.write_all(key).unwrap();
     let str = encoder.finish().unwrap();
-    println!("{}", String::from_utf8(str.clone()).unwrap());
+    let res = String::from_utf8(str.clone()).unwrap();
 
-    let mut file = File::create(".key").unwrap();
-    file.write_all(&str).unwrap();
+    let res = format!("KEY={}\nDATABASE_URL={}", res, "file:./you_should_not_pass/you_should_not_pass.db");
+
+    let mut file = File::create(".env").unwrap();
+    file.write_all(res.as_bytes()).unwrap();
 }
 
 #[cfg(test)]
