@@ -60,12 +60,12 @@ pub async fn read_request(stream: &TcpStream) -> Result<Action, Box<dyn Error>> 
             let request = String::from_utf8_lossy(&buffer);
             let mut parts: Vec<&str> = request.split('\t').collect();
 
-            eprintln!("request: {}", request);
+            // eprintln!("request: {}", request);
             let mut result = vec![];
             for part in &mut parts {
                 result.push(part.trim_end_matches('\0'));
             }
-            eprintln!("result: {:?}", result);
+            // eprintln!("result: {:?}", result);
 
             Ok(pack_action(result)?)
         }

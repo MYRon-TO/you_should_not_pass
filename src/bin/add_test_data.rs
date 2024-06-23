@@ -14,7 +14,7 @@ fn encode(data: String) -> String {
     String::from_utf8(str.clone()).unwrap()
 }
 
-fn decode(data: String) -> String {
+fn _decode(data: String) -> String {
     let mut decoder = DecoderReader::new(data.as_bytes(), &STANDARD);
     let mut decoded = Vec::new();
     decoder.read_to_end(&mut decoded).unwrap();
@@ -30,10 +30,10 @@ async fn main() {
 
     if db
         .add_new_website_account(
-            "test_account1".to_string(),
-            "test_password1".to_string(),
-            "www.baidu.com".to_string(),
-            Some("baidu".to_string()),
+            encode("test_account1".to_string()),
+            encode("test_password1".to_string()),
+            encode("www.baidu.com".to_string()),
+            Some(encode("baidu".to_string())),
             Some(encode("nothing".to_string())),
         )
         .await
@@ -44,10 +44,10 @@ async fn main() {
 
     if db
         .add_new_website_account(
-            "test_account2".to_string(),
-            "test_password2".to_string(),
-            "https://www.baidu.com".to_string(),
-            Some("baidu".to_string()),
+            encode("test_account2".to_string()),
+            encode("test_password2".to_string()),
+            encode("https://www.baidu.com".to_string()),
+            Some(encode("baidu".to_string())),
             Some(encode("nothing".to_string())),
         )
         .await
@@ -58,9 +58,9 @@ async fn main() {
 
     if db
         .add_new_website_account(
-            "test_account3".to_string(),
-            "test_password3".to_string(),
-            "https://www.not_exit.not_exit".to_string(),
+            encode("test_account3".to_string()),
+            encode("test_password3".to_string()),
+            encode("https://www.not_exit.not_exit".to_string()),
             None,
             None,
         )

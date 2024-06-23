@@ -1,5 +1,9 @@
+use std::io::Read;
+
 use reqwest::Client;
 use tokio::task;
+use base64::engine::general_purpose::STANDARD;
+use base64::read::DecoderReader;
 
 use crate::db::models::{WebsiteAccount, WebsiteAccountWithDeadLink};
 
@@ -39,10 +43,10 @@ pub async fn check_dead_link_info(
     for account in url_list {
         let client = client.clone();
         tasks.push(task::spawn(async move {
-            let response = client.get(&account.site_url).send().await;
+            let response = client.get(_decode(&account.site_url)).send().await;
             match response {
                 Ok(response) => {
-                    eprintln!("Success: {}", account.site_url);
+                    // eprintln!("Success: {}", account.site_url);
                     WebsiteAccountWithDeadLink {
                         id: account.id,
                         account: account.account,
@@ -54,7 +58,7 @@ pub async fn check_dead_link_info(
                     }
                 }
                 Err(_) => {
-                    eprintln!("Error: {}", account.site_url);
+                    // eprintln!("Error: {}", account.site_url);
                     WebsiteAccountWithDeadLink {
                         id: account.id,
                         account: account.account,
@@ -76,6 +80,13 @@ pub async fn check_dead_link_info(
     }
 
     link_status_list
+}
+
+fn _decode(data: &String) -> String {
+    let mut decoder = DecoderReader::new(data.as_bytes(), &STANDARD);
+    let mut decoded = Vec::new();
+    decoder.read_to_end(&mut decoded).unwrap();
+    String::from_utf8(decoded).unwrap()
 }
 
 #[cfg(test)]
