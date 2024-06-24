@@ -60,7 +60,7 @@ async fn main() {
         .add_new_website_account(
             encode("test_account3".to_string()),
             encode("test_password3".to_string()),
-            encode("https://www.not_exit.not_exit".to_string()),
+            encode("https://www.not_exist.not_exist".to_string()),
             None,
             None,
         )
